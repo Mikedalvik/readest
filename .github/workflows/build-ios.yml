@@ -36,6 +36,12 @@ jobs:
       - name: Initialize iOS
         run: pnpm tauri ios init
       
+      - name: Set iOS deployment target to 14.0
+        run: |
+          cd apps/readest-app/src-tauri/gen/apple
+          # Set IPHONEOS_DEPLOYMENT_TARGET to 14.0
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' Readest.xcodeproj/project.pbxproj
+      
       - name: Build Next.js frontend
         working-directory: apps/readest-app
         env:
@@ -44,6 +50,8 @@ jobs:
       
       - name: Build Rust library for iOS simulator
         working-directory: apps/readest-app/src-tauri
+        env:
+          IPHONEOS_DEPLOYMENT_TARGET: "14.0"
         run: |
           cargo build --release --target aarch64-apple-ios-sim --lib
           
@@ -65,6 +73,7 @@ jobs:
           ARCHS = arm64
           ONLY_ACTIVE_ARCH = YES
           VALID_ARCHS = arm64
+          IPHONEOS_DEPLOYMENT_TARGET = 14.0
           XCCONFIG
       
       - name: Disable Build Rust Code script in Xcode
@@ -73,7 +82,7 @@ jobs:
           # Comment out the Rust build script so it doesn't run
           sed -i '' 's|shellScript = "pnpm tauri ios xcode-script|shellScript = "echo Skipping Rust build - already built|g' Readest.xcodeproj/project.pbxproj
       
-      - name: Build iOS app with Xcode (Rust already built)
+      - name: Build iOS app with Xcode
         working-directory: apps/readest-app
         run: |
           xcodebuild \
@@ -89,6 +98,7 @@ jobs:
             DEVELOPMENT_TEAM="" \
             ONLY_ACTIVE_ARCH=YES \
             VALID_ARCHS=arm64 \
+            IPHONEOS_DEPLOYMENT_TARGET=14.0 \
             build
       
       - name: Find and list build outputs
