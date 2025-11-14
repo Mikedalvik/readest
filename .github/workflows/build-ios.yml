@@ -1,0 +1,23 @@
+name: Build iOS
+on: 
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g pnpm
+      - run: pnpm install
+      - run: pnpm --filter @readest/readest-app setup-pdfjs
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm tauri ios init
+      - run: pnpm tauri ios build --simulator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-app
+          path: src-tauri/gen/apple/build/arm64/**/Readest.app
