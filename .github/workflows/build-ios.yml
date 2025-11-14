@@ -39,7 +39,6 @@ jobs:
       - name: Set iOS deployment target to 14.0
         run: |
           cd apps/readest-app/src-tauri/gen/apple
-          # Set IPHONEOS_DEPLOYMENT_TARGET to 14.0
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 14.0;/g' Readest.xcodeproj/project.pbxproj
       
       - name: Build Next.js frontend
@@ -55,11 +54,16 @@ jobs:
         run: |
           cargo build --release --target aarch64-apple-ios-sim --lib
           
+          echo "=== Finding built libraries ==="
+          find ../../../target/aarch64-apple-ios-sim/release -name "*.a" -type f
+          
           # Create output directories
           mkdir -p gen/apple/Externals/arm64/debug
           
-          # Copy built library
-          cp ../../../target/aarch64-apple-ios-sim/release/libapp.a gen/apple/Externals/arm64/debug/
+          # Find and copy the library (should be libreadest.a)
+          LIBRARY=$(find ../../../target/aarch64-apple-ios-sim/release -name "lib*.a" -type f | head -1)
+          echo "Found library: $LIBRARY"
+          cp "$LIBRARY" gen/apple/Externals/arm64/debug/libapp.a
       
       - name: Create xcconfig to disable code signing
         run: |
@@ -79,7 +83,6 @@ jobs:
       - name: Disable Build Rust Code script in Xcode
         run: |
           cd apps/readest-app/src-tauri/gen/apple
-          # Comment out the Rust build script so it doesn't run
           sed -i '' 's|shellScript = "pnpm tauri ios xcode-script|shellScript = "echo Skipping Rust build - already built|g' Readest.xcodeproj/project.pbxproj
       
       - name: Build iOS app with Xcode
