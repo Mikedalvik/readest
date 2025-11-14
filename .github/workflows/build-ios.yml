@@ -50,11 +50,12 @@ jobs:
           VALID_ARCHS = arm64
           XCCONFIG
       
-      - name: Build iOS app (arm64 simulator only)
+      - name: Build iOS app (arm64 simulator only) with verbose output
         working-directory: apps/readest-app
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
         run: |
+          set -x  # Enable verbose output
           xcodebuild \
             -project src-tauri/gen/apple/Readest.xcodeproj \
             -scheme Readest_iOS \
@@ -68,12 +69,30 @@ jobs:
             DEVELOPMENT_TEAM="" \
             ONLY_ACTIVE_ARCH=YES \
             VALID_ARCHS=arm64 \
-            build
+            build 2>&1 | tee build.log
+          
+          # If build failed, show last 100 lines of output
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "=== BUILD FAILED - Last 100 lines of output ==="
+            tail -100 build.log
+            exit 1
+          fi
       
       - name: Find and list build outputs
         run: |
           echo "Searching for build outputs..."
           find apps/readest-app/src-tauri/gen/apple/build -name "*.app" -type d
+          echo "=== Directory structure ==="
+          ls -la apps/readest-app/src-tauri/gen/apple/build/ || true
+          ls -la apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/ || true
+      
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: apps/readest-app/build.log
+          if-no-files-found: warn
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
