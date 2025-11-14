@@ -37,22 +37,36 @@ jobs:
       - name: Initialize iOS
         run: pnpm tauri ios init
       
-      - name: Build iOS app
+      - name: Modify Xcode project to skip code signing
+        run: |
+          cd apps/readest-app/src-tauri/gen/apple
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;\nCODE_SIGN_IDENTITY = "";/g' Readest.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = "";/g' Readest.xcodeproj/project.pbxproj
+      
+      - name: Build iOS app (unsigned)
         working-directory: apps/readest-app
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
-        run: pnpm tauri ios build
+        run: |
+          xcodebuild \
+            -project src-tauri/gen/apple/Readest.xcodeproj \
+            -scheme Readest_iOS \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -arch x86_64 \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO
       
       - name: Find and list build outputs
         run: |
           echo "Searching for build outputs..."
-          find src-tauri/gen/apple -type f -name "*.app" -o -name "*.ipa" || echo "No builds found"
+          find apps/readest-app/src-tauri/gen/apple -name "*.app" -type d
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: readest-ios-app
-          path: |
-            src-tauri/gen/apple/build/**/*.app
-            src-tauri/gen/apple/build/**/*.ipa
+          name: readest-ios-simulator-app
+          path: apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/*.app
           if-no-files-found: warn
