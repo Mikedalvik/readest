@@ -38,17 +38,18 @@ jobs:
         run: pnpm tauri ios init
       
       - name: Build iOS app
+        working-directory: apps/readest-app
         run: pnpm tauri ios build
       
-      - name: List build outputs
+      - name: Find and list build outputs
         run: |
-          echo "Build completed. Searching for output files:"
-          find src-tauri/gen/apple -type f \( -name "*.app" -o -name "*.ipa" \) -exec ls -lh {} \;
+          echo "Searching for build outputs..."
+          find src-tauri/gen/apple -type f -name "*.app" -o -name "*.ipa" || echo "No builds found"
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: readest-ios-build
+          name: readest-ios-app
           path: |
             src-tauri/gen/apple/build/**/*.app
             src-tauri/gen/apple/build/**/*.ipa
