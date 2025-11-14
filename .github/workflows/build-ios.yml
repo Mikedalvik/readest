@@ -37,37 +37,37 @@ jobs:
       - name: Initialize iOS
         run: pnpm tauri ios init
       
-      - name: Modify Xcode project to skip code signing
+      - name: Disable code signing in Xcode project
         run: |
           cd apps/readest-app/src-tauri/gen/apple
+          # Modify project settings to disable code signing
+          plutil -replace CODE_SIGN_IDENTITY -string "" Readest.xcodeproj/project.pbxproj || true
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' Readest.xcodeproj/project.pbxproj
-          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' Readest.xcodeproj/project.pbxproj
-          sed -i '' 's/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = "";/g' Readest.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' Readest.xcodeproj/project.pbxproj
       
-      - name: Build iOS app (simulator - iPhone 17)
+      - name: Build iOS app using Tauri
         working-directory: apps/readest-app
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
+          TAURI_SIGNING_IDENTITY: ""
+          TAURI_SKIP_SIGNING: "true"
         run: |
-          xcodebuild \
-            -project src-tauri/gen/apple/Readest.xcodeproj \
-            -scheme Readest_iOS \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 17' \
+          pnpm tauri ios build -- \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+            CODE_SIGNING_ALLOWED=NO
       
       - name: Find and list build outputs
         run: |
           echo "Searching for build outputs..."
-          find apps/readest-app/src-tauri/gen/apple/build -name "*.app" -type d
+          find apps/readest-app/src-tauri/gen/apple/build -name "*.app" -type d || true
+          find apps/readest-app/src-tauri/target -name "*.app" -type d || true
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: readest-ios-simulator-app
-          path: apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/*.app
+          path: |
+            apps/readest-app/src-tauri/gen/apple/build/**/*.app
+            apps/readest-app/src-tauri/target/**/*.app
           if-no-files-found: warn
