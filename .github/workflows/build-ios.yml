@@ -40,10 +40,12 @@ jobs:
       - name: Modify Xcode project to skip code signing
         run: |
           cd apps/readest-app/src-tauri/gen/apple
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;\nCODE_SIGN_IDENTITY = "";/g' Readest.xcodeproj/project.pbxproj
+          # Disable code signing
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' Readest.xcodeproj/project.pbxproj
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' Readest.xcodeproj/project.pbxproj
           sed -i '' 's/DEVELOPMENT_TEAM = .*;/DEVELOPMENT_TEAM = "";/g' Readest.xcodeproj/project.pbxproj
       
-      - name: Build iOS app (unsigned)
+      - name: Build iOS app (simulator - arm64)
         working-directory: apps/readest-app
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
@@ -53,16 +55,19 @@ jobs:
             -scheme Readest_iOS \
             -configuration Debug \
             -sdk iphonesimulator \
-            -arch x86_64 \
+            -arch arm64 \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            ONLY_ACTIVE_ARCH=NO
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
+            build
       
       - name: Find and list build outputs
         run: |
           echo "Searching for build outputs..."
-          find apps/readest-app/src-tauri/gen/apple -name "*.app" -type d
+          find apps/readest-app/src-tauri/gen/apple/build -name "*.app" -type d
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
