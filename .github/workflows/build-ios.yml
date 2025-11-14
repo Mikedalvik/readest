@@ -23,9 +23,8 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       
-      - name: Add iOS targets
+      - name: Add iOS targets (arm64 only)
         run: |
-          rustup target add aarch64-apple-ios
           rustup target add aarch64-apple-ios-sim
       
       - name: Install dependencies
@@ -46,18 +45,12 @@ jobs:
           CODE_SIGN_STYLE = Manual
           DEVELOPMENT_TEAM =
           PROVISIONING_PROFILE_SPECIFIER =
+          ARCHS = arm64
+          ONLY_ACTIVE_ARCH = YES
+          VALID_ARCHS = arm64
           XCCONFIG
       
-      - name: Modify Xcode project to use xcconfig
-        run: |
-          cd apps/readest-app/src-tauri/gen/apple
-          # Backup original
-          cp Readest.xcodeproj/project.pbxproj Readest.xcodeproj/project.pbxproj.bak
-          
-          # Add xcconfig reference to all configurations
-          sed -i '' 's|buildSettings = {|baseConfigurationReference = DisableCodeSigning.xcconfig; buildSettings = {|g' Readest.xcodeproj/project.pbxproj
-      
-      - name: Build iOS app with signing completely disabled
+      - name: Build iOS app (arm64 simulator only)
         working-directory: apps/readest-app
         env:
           NODE_OPTIONS: "--max-old-space-size=6144"
@@ -67,12 +60,14 @@ jobs:
             -scheme Readest_iOS \
             -configuration Debug \
             -sdk iphonesimulator \
+            -arch arm64 \
             -xcconfig src-tauri/gen/apple/DisableCodeSigning.xcconfig \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER="" \
+            ONLY_ACTIVE_ARCH=YES \
+            VALID_ARCHS=arm64 \
             build
       
       - name: Find and list build outputs
