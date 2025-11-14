@@ -23,7 +23,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       
-      - name: Add iOS targets (arm64 only)
+      - name: Add iOS targets
         run: |
           rustup target add aarch64-apple-ios-sim
       
@@ -35,6 +35,23 @@ jobs:
       
       - name: Initialize iOS
         run: pnpm tauri ios init
+      
+      - name: Build Next.js frontend
+        working-directory: apps/readest-app
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
+        run: pnpm build
+      
+      - name: Build Rust library for iOS simulator
+        working-directory: apps/readest-app/src-tauri
+        run: |
+          cargo build --release --target aarch64-apple-ios-sim --lib
+          
+          # Create output directories
+          mkdir -p gen/apple/Externals/arm64/debug
+          
+          # Copy built library
+          cp ../../../target/aarch64-apple-ios-sim/release/libapp.a gen/apple/Externals/arm64/debug/
       
       - name: Create xcconfig to disable code signing
         run: |
@@ -50,12 +67,15 @@ jobs:
           VALID_ARCHS = arm64
           XCCONFIG
       
-      - name: Build iOS app (arm64 simulator only) with verbose output
-        working-directory: apps/readest-app
-        env:
-          NODE_OPTIONS: "--max-old-space-size=6144"
+      - name: Disable Build Rust Code script in Xcode
         run: |
-          set -x  # Enable verbose output
+          cd apps/readest-app/src-tauri/gen/apple
+          # Comment out the Rust build script so it doesn't run
+          sed -i '' 's|shellScript = "pnpm tauri ios xcode-script|shellScript = "echo Skipping Rust build - already built|g' Readest.xcodeproj/project.pbxproj
+      
+      - name: Build iOS app with Xcode (Rust already built)
+        working-directory: apps/readest-app
+        run: |
           xcodebuild \
             -project src-tauri/gen/apple/Readest.xcodeproj \
             -scheme Readest_iOS \
@@ -69,30 +89,12 @@ jobs:
             DEVELOPMENT_TEAM="" \
             ONLY_ACTIVE_ARCH=YES \
             VALID_ARCHS=arm64 \
-            build 2>&1 | tee build.log
-          
-          # If build failed, show last 100 lines of output
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "=== BUILD FAILED - Last 100 lines of output ==="
-            tail -100 build.log
-            exit 1
-          fi
+            build
       
       - name: Find and list build outputs
         run: |
           echo "Searching for build outputs..."
           find apps/readest-app/src-tauri/gen/apple/build -name "*.app" -type d
-          echo "=== Directory structure ==="
-          ls -la apps/readest-app/src-tauri/gen/apple/build/ || true
-          ls -la apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/ || true
-      
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: apps/readest-app/build.log
-          if-no-files-found: warn
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
