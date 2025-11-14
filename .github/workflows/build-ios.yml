@@ -39,6 +39,8 @@ jobs:
       
       - name: Build iOS app
         working-directory: apps/readest-app
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: pnpm tauri ios build
       
       - name: Find and list build outputs
