@@ -57,10 +57,8 @@ jobs:
           echo "=== Finding built libraries ==="
           find ../../../target/aarch64-apple-ios-sim/release -name "*.a" -type f
           
-          # Create output directories
           mkdir -p gen/apple/Externals/arm64/debug
           
-          # Find and copy the library
           LIBRARY=$(find ../../../target/aarch64-apple-ios-sim/release -name "lib*.a" -type f | head -1)
           echo "Found library: $LIBRARY"
           cp "$LIBRARY" gen/apple/Externals/arm64/debug/libapp.a
@@ -106,20 +104,31 @@ jobs:
       
       - name: Find and list build outputs
         run: |
-          echo "=== Searching for .app files recursively ==="
-          find apps/readest-app -name "*.app" -type d 2>/dev/null || echo "No .app found yet"
+          echo "=== Searching for .app files in DerivedData ==="
+          find ~/Library/Developer/Xcode/DerivedData -name "Readest.app" -type d 2>/dev/null || echo "Not found in DerivedData"
           
-          echo "=== Checking Xcode DerivedData ==="
-          find ~/Library/Developer/Xcode/DerivedData -name "Readest.app" -type d 2>/dev/null || echo "Not in DerivedData"
+          echo ""
+          echo "=== Searching for .app files in work directory ==="
+          find /Users/runner/work/readest -name "*.app" -type d 2>/dev/null || echo "Not found in work directory"
           
-          echo "=== Listing src-tauri/gen/apple contents ==="
-          ls -la apps/readest-app/src-tauri/gen/apple/ || echo "Directory doesn't exist"
+          echo ""
+          echo "=== Checking expected location ==="
+          ls -la apps/readest-app/src-tauri/gen/apple/build/ 2>/dev/null || echo "build/ directory doesn't exist"
+          
+          echo ""
+          echo "=== Listing DerivedData Build/Products ==="
+          ls -la ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug-iphonesimulator/ 2>/dev/null || echo "No Debug-iphonesimulator directory"
+          
+          echo ""
+          echo "=== Finding ALL .app bundles ==="
+          find ~ -name "*.app" -type d -path "*/Build/Products/*" 2>/dev/null | head -20
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: readest-ios-simulator-app
           path: |
-            apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/*.app
-            ~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug-iphonesimulator/*.app
-          if-no-files-found: warn
+            ~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug-iphonesimulator/Readest.app
+            apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/Readest.app
+            /Users/runner/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug-iphonesimulator/*.app
+          if-no-files-found: error
