@@ -60,7 +60,7 @@ jobs:
           # Create output directories
           mkdir -p gen/apple/Externals/arm64/debug
           
-          # Find and copy the library (should be libreadest.a)
+          # Find and copy the library
           LIBRARY=$(find ../../../target/aarch64-apple-ios-sim/release -name "lib*.a" -type f | head -1)
           echo "Found library: $LIBRARY"
           cp "$LIBRARY" gen/apple/Externals/arm64/debug/libapp.a
@@ -106,12 +106,20 @@ jobs:
       
       - name: Find and list build outputs
         run: |
-          echo "Searching for build outputs..."
-          find apps/readest-app/src-tauri/gen/apple/build -name "*.app" -type d
+          echo "=== Searching for .app files recursively ==="
+          find apps/readest-app -name "*.app" -type d 2>/dev/null || echo "No .app found yet"
+          
+          echo "=== Checking Xcode DerivedData ==="
+          find ~/Library/Developer/Xcode/DerivedData -name "Readest.app" -type d 2>/dev/null || echo "Not in DerivedData"
+          
+          echo "=== Listing src-tauri/gen/apple contents ==="
+          ls -la apps/readest-app/src-tauri/gen/apple/ || echo "Directory doesn't exist"
       
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: readest-ios-simulator-app
-          path: apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/*.app
+          path: |
+            apps/readest-app/src-tauri/gen/apple/build/Debug-iphonesimulator/*.app
+            ~/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug-iphonesimulator/*.app
           if-no-files-found: warn
