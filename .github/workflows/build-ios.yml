@@ -127,6 +127,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: readest-ios-simulator-app
-          path: /Users/runner/Library/Developer/Xcode/DerivedData/**/Build/Products/Debug-iphonesimulator/Readest.app
+          path: /Users/runner/Library/Developer/Xcode/DerivedData/**/Build/Products/debug-iphonesimulator/Readest.app
           if-no-files-found: error
-
